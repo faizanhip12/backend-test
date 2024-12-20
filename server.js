@@ -2,6 +2,9 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const ioClient = require('socket.io-client'); // Import socket.io-client to simulate a connection
+const { PrismaClient } = require('@prisma/client'); // Import PrismaClient
+
+const prisma = new PrismaClient(); // Create an instance of PrismaClient
 
 const app = express();
 const server = http.createServer(app);
@@ -37,16 +40,26 @@ io.on('connection', (socket) => {
     console.log('User disconnected');
   });
 });
-const dataArray = [
-    { id: 1, name: "Item 1", description: "This is the first item." },
-    { id: 2, name: "Item 2", description: "This is the second item." },
-    { id: 3, name: "Item 3", description: "This is the third item." },
-  ];
-  
-  // GET /api/data endpoint to return the array of data
-  app.get('/api/data', (req, res) => {
-    res.json(dataArray);
+
+// Database connection
+prisma.$connect()
+  .then(() => {
+    console.log('Database connected successfully!');
+  })
+  .catch((error) => {
+    console.error('Error connecting to the database:', error);
   });
+
+// GET /api/data endpoint to return the array of data from the database
+app.get('/api/data', async (req, res) => {
+  try {
+    const items = await prisma.item.findMany(); // Fetch items from the database
+    res.json(items); // Return the data as JSON
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    res.status(500).json({ error: 'Failed to fetch data' });
+  }
+});
 
 // Start server
 server.listen(port, () => {
